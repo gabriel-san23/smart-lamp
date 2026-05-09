@@ -2,6 +2,12 @@
 
 links uteis:
 
+FIWARE Descomplicado:
+https://github.com/fabiocabrini/fiware
+
+AWS Academy Learner Lab:
+https://awsacademy.instructure.com
+
 Pinout DFPlayer Mini mp3 module: 
 https://wiki.dfrobot.com/dfr0299/#tech_specs:~:text=Pinout
 
