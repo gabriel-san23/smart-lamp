@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11605.240 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartLamp", "SmartLamp\SmartLamp.csproj", "{240A8578-6633-4118-8B9D-F7ED2F819544}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{240A8578-6633-4118-8B9D-F7ED2F819544}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{240A8578-6633-4118-8B9D-F7ED2F819544}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{240A8578-6633-4118-8B9D-F7ED2F819544}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{240A8578-6633-4118-8B9D-F7ED2F819544}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DDBC5F02-7615-441D-A342-6E923E71BF27}
+	EndGlobalSection
+EndGlobal
