@@ -14,15 +14,18 @@
 // Configurações - variáveis editáveis
 const char* default_SSID = "Wokwi-GUEST"; // Nome da rede Wi-Fi
 const char* default_PASSWORD = ""; // Senha da rede Wi-Fi
-const char* default_BROKER_MQTT = "20.163.23.245"; // IP do Broker MQTT
+const char* default_BROKER_MQTT = ""; // IP do Broker MQTT
 const int default_BROKER_PORT = 1883; // Porta do Broker MQTT
 const char* default_TOPICO_SUBSCRIBE = "/TEF/lamp001/cmd"; // Tópico MQTT de escuta
 const char* default_TOPICO_PUBLISH_1 = "/TEF/lamp001/attrs"; // Tópico MQTT de envio de informações para Broker
 const char* default_TOPICO_PUBLISH_2 = "/TEF/lamp001/attrs/l"; // Tópico MQTT de envio de informações para Broker
 const char* default_ID_MQTT = "fiware_001"; // ID MQTT
-const int default_D4 = 2; // Pino do LED onboard
-// Declaração da variável para o prefixo do tópico
-const char* topicPrefix = "lamp001";
+const char* topicPrefix = "lamp001"; // Variável para o prefixo do tópico
+// Conexões no ESP32
+const int D4 = 2; // Pino do LED onboard
+const int redPin = 21;
+const int greenPin = 19;
+const int bluePin = 18;
 
 // Variáveis para configurações editáveis
 char* SSID = const_cast<char*>(default_SSID);
@@ -33,11 +36,22 @@ char* TOPICO_SUBSCRIBE = const_cast<char*>(default_TOPICO_SUBSCRIBE);
 char* TOPICO_PUBLISH_1 = const_cast<char*>(default_TOPICO_PUBLISH_1);
 char* TOPICO_PUBLISH_2 = const_cast<char*>(default_TOPICO_PUBLISH_2);
 char* ID_MQTT = const_cast<char*>(default_ID_MQTT);
-int D4 = default_D4;
+
+// Configurações PWM
+const int frequency = 5000;
+const int resolution = 8; // 8 bits: 0-255
 
 WiFiClient espClient;
 PubSubClient MQTT(espClient);
 char EstadoSaida = '0';
+
+// Função para definir cor e intensidade
+void setRGB(int r, int g, int b, float intensity=1) {
+  // A intensidade reduz o brilho de cada canal PWM
+  ledcWrite(redPin, r * intensity);
+  ledcWrite(greenPin, g * intensity);
+  ledcWrite(bluePin, b * intensity);
+}
 
 void initSerial() {
     Serial.begin(115200);
@@ -62,6 +76,9 @@ void setup() {
     initSerial();
     initWiFi();
     initMQTT();
+
+    // configura cor violeta com intensidade máxima
+    setRGB(128, 0, 128);
     delay(5000);
     MQTT.publish(TOPICO_PUBLISH_1, "s|on");
 }
@@ -91,6 +108,8 @@ void reconectWiFi() {
     digitalWrite(D4, LOW);
 }
 
+// Um callback MQTT é uma função assíncrona invocada automaticamente quando
+// um cliente recebe uma mensagem de um broker em um tópico subscrito.
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     String msg;
     for (int i = 0; i < length; i++) {
@@ -103,8 +122,9 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     // Forma o padrão de tópico para comparação
     String onTopic = String(topicPrefix) + "@on|";
     String offTopic = String(topicPrefix) + "@off|";
+    String rgbTopic = String(topicPrefix) + "@rgb|";
 
-    // Compara com o tópico recebido
+    // Verifica qual o tópico recebido a partir da comparação
     if (msg.equals(onTopic)) {
         digitalWrite(D4, HIGH);
         EstadoSaida = '1';
@@ -114,6 +134,37 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
         digitalWrite(D4, LOW);
         EstadoSaida = '0';
     }
+
+    if (msg.startsWith(rgbTopic)) {
+        // Extrai apenas a parte dos valores após o "@rgb|"
+        // Exemplo: se msg for "lamp001@rgb|255,100,50", rgbValues será "255,100,50"
+        String rgbValues = msg.substring(rgbTopic.length());
+        
+        // Encontra as posições das vírgulas para separar os valores
+        int firstCommaIndex = rgbValues.indexOf(',');
+        int secondCommaIndex = rgbValues.indexOf(',', firstCommaIndex + 1);
+        
+        // Valida se encontrou as duas vírgulas (formato correto r,g,b)
+        if (firstCommaIndex > 0 && secondCommaIndex > 0) {
+            // Separa e converte as strings para inteiros
+            int r = rgbValues.substring(0, firstCommaIndex).toInt();
+            int g = rgbValues.substring(firstCommaIndex + 1, secondCommaIndex).toInt();
+            int b = rgbValues.substring(secondCommaIndex + 1).toInt();
+            
+            Serial.print("- Comando RGB reconhecido:");
+            Serial.print(" R="); Serial.print(r); 
+            Serial.print(" G="); Serial.print(g);
+            Serial.print(" B="); Serial.println(b);
+            
+            setRGB(r, g, b, 1.0); // Aplica a cor recebida
+            
+            // O FIWARE exige que o dispositivo confirme que o comando foi executado
+            // Publicamos no tópico cmdexe para atualizar o status da entidade
+            String cmdexeTopic = String("/TEF/") + topicPrefix + "/cmdexe";
+            String confirmMsg = String("rgb|") + rgbValues;
+            MQTT.publish(cmdexeTopic.c_str(), confirmMsg.c_str()); 
+          }
+      }
 }
 
 void VerificaConexoesWiFIEMQTT() {
@@ -137,7 +188,13 @@ void EnviaEstadoOutputMQTT() {
 }
 
 void InitOutput() {
-    pinMode(D4, OUTPUT);
+    // Configura os canais PWM e associa os pinos aos canais
+    ledcAttach(redPin, frequency, resolution);
+    ledcAttach(greenPin, frequency, resolution);
+    ledcAttach(bluePin, frequency, resolution);
+
+    // Configura e oscila LED embutido
+    pinMode(D4, OUTPUT);    
     digitalWrite(D4, HIGH);
     boolean toggle = false;
 
