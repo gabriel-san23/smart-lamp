@@ -10,8 +10,13 @@
 //Autor Rev3: Fábio Henrique Cabrini
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include "DFRobotDFPlayerMini.h"
+
+HardwareSerial myHardwareSerial(2);
+DFRobotDFPlayerMini myDFPlayer;
 
 // Configurações - variáveis editáveis
+const int default_audioVolume = 30; // Volume do módulo DFPlayer (range: 0-30)
 const char* default_SSID = "Wokwi-GUEST"; // Nome da rede Wi-Fi
 const char* default_PASSWORD = ""; // Senha da rede Wi-Fi
 const char* default_BROKER_MQTT = ""; // IP do Broker MQTT
@@ -20,14 +25,16 @@ const char* default_TOPICO_SUBSCRIBE = "/TEF/lamp001/cmd"; // Tópico MQTT de es
 const char* default_TOPICO_PUBLISH_1 = "/TEF/lamp001/attrs"; // Tópico MQTT de envio de informações para Broker
 const char* default_TOPICO_PUBLISH_2 = "/TEF/lamp001/attrs/l"; // Tópico MQTT de envio de informações para Broker
 const char* default_ID_MQTT = "fiware_001"; // ID MQTT
-const char* topicPrefix = "lamp001"; // Variável para o prefixo do tópico
+const char* topicPrefix = "lamp001"; // Declaração da variável para o prefixo do tópico
 // Conexões no ESP32
 const int D4 = 2; // Pino do LED onboard
+const int busyPin = 4; // Pino conectado ao BUSY do DFPlayer
 const int redPin = 21;
 const int greenPin = 19;
 const int bluePin = 18;
 
 // Variáveis para configurações editáveis
+int audioVolume = default_audioVolume;
 char* SSID = const_cast<char*>(default_SSID);
 char* PASSWORD = const_cast<char*>(default_PASSWORD);
 char* BROKER_MQTT = const_cast<char*>(default_BROKER_MQTT);
@@ -54,33 +61,58 @@ void setRGB(int r, int g, int b, float intensity=1) {
 }
 
 void initSerial() {
-    Serial.begin(115200);
+  Serial.begin(115200);
 }
 
 void initWiFi() {
-    delay(10);
-    Serial.println("------Conexao WI-FI------");
-    Serial.print("Conectando-se na rede: ");
-    Serial.println(SSID);
-    Serial.println("Aguarde");
-    reconectWiFi();
+  delay(10);
+  Serial.println("------Conexao WI-FI------");
+  Serial.print("Conectando-se na rede: ");
+  Serial.println(SSID);
+  Serial.println("Aguarde");
+  reconectWiFi();
 }
 
 void initMQTT() {
-    MQTT.setServer(BROKER_MQTT, BROKER_PORT);
-    MQTT.setCallback(mqtt_callback);
+  MQTT.setServer(BROKER_MQTT, BROKER_PORT);
+  MQTT.setCallback(mqtt_callback);
+}
+
+void initMP3() {
+  pinMode(busyPin, INPUT);
+
+  Serial.println("Compilado!");
+
+  // Inicializa a serial do DFPlayer (9600 baud rate é o padrão dele)
+  //               begin(baud rate, 8 bit data, RX Pin, TX Pin)
+  myHardwareSerial.begin(9600, SERIAL_8N1, 16, 17);
+
+  Serial.println("Iniciando comunicação com o DFPlayer...");
+
+  // Tenta inicializar o módulo
+  if (!myDFPlayer.begin(myHardwareSerial)) {
+    Serial.println("Erro: Verifique as conexões ou o Cartão SD!");
+    while(true); // Trava aqui se houver erro
+  }
+
+  Serial.println("DFPlayer conectado");
+  delay(3000); // <--- ESPERE O CARTÃO "MONTAR"
+
+  myDFPlayer.volume(audioVolume);
+  myDFPlayer.EQ(0);
+  delay(500); // Pequena pausa entre comandos
 }
 
 void setup() {
-    InitOutput();
-    initSerial();
-    initWiFi();
-    initMQTT();
+  InitOutput();
+  initSerial();
+  initMP3();
+  initWiFi();
+  initMQTT();
+  myDFPlayer.playFolder(1, 3); // "Conectado ao sistema FIWARE"
+  aguardarAudio();
 
-    // configura cor violeta com intensidade máxima
-    setRGB(128, 0, 128);
-    delay(5000);
-    MQTT.publish(TOPICO_PUBLISH_1, "s|on");
+  MQTT.publish(TOPICO_PUBLISH_1, "s|on");
 }
 
 void loop() {
@@ -188,13 +220,13 @@ void EnviaEstadoOutputMQTT() {
 }
 
 void InitOutput() {
-    // Configura os canais PWM e associa os pinos aos canais
+    // Configura os canais PWM
     ledcAttach(redPin, frequency, resolution);
     ledcAttach(greenPin, frequency, resolution);
     ledcAttach(bluePin, frequency, resolution);
 
     // Configura e oscila LED embutido
-    pinMode(D4, OUTPUT);    
+    pinMode(D4, OUTPUT);
     digitalWrite(D4, HIGH);
     boolean toggle = false;
 
@@ -223,9 +255,63 @@ void reconnectMQTT() {
 void handleLuminosity() {
     const int potPin = 34;
     int sensorValue = analogRead(potPin);
-    int luminosity = map(sensorValue, 0, 4095, 0, 100);
+    int luminosity = map(sensorValue, 0, 4095, 100, 0);
     String mensagem = String(luminosity);
     Serial.print("Valor da luminosidade: ");
     Serial.println(mensagem.c_str());
     MQTT.publish(TOPICO_PUBLISH_2, mensagem.c_str());
+}
+
+void aguardarAudio() {
+  delay(70); // Pequeno delay para o DFPlayer processar o comando e baixar o pino BUSY
+  while (digitalRead(busyPin) == LOW) {
+    // Enquanto o pino estiver em LOW, o áudio está tocando.
+    // Não fazemos nada, apenas esperamos.
+    delay(10);
+  }
+}
+
+void falarBrilho(int valor) {
+  if (valor < 0) valor = 0;
+  if (valor > 100) valor = 100;
+
+  // 1. Prefixo
+  myDFPlayer.playFolder(1, 5);
+  aguardarAudio();
+
+  // 2. Lógica dos Números
+
+  if (valor == 0) {
+    myDFPlayer.playFolder(3, 1);
+    aguardarAudio();
+  }
+  else if (valor == 100) {
+    myDFPlayer.playFolder(3, 21);
+    aguardarAudio();
+  }
+  else if (valor >= 1 && valor <= 19) {
+    myDFPlayer.playFolder(3, valor + 1); // "001.mp3 = 0"
+    aguardarAudio();
+  }
+  else if (valor >= 20 && valor <= 99) {
+    int dezena = valor / 10;
+    int unidade = valor % 10;
+
+    // Fala a dezena:
+    myDFPlayer.playFolder(4, dezena - 1); // "001.mp3 = 20"
+    aguardarAudio();
+
+    // Fala a unidade:
+    if (unidade > 0) {
+      myDFPlayer.playFolder(1, 7); // Conector "e"
+      aguardarAudio();
+
+      myDFPlayer.playFolder(3, unidade + 1); // "001.mp3 = 0"
+      aguardarAudio();
+    }
+  }
+
+  // 3. Sufixo
+  myDFPlayer.playFolder(1, 6);
+  aguardarAudio();
 }
