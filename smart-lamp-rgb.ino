@@ -27,8 +27,12 @@ const char* default_TOPICO_PUBLISH_2 = "/TEF/lamp001/attrs/l"; // Tópico MQTT d
 const char* default_ID_MQTT = "fiware_001"; // ID MQTT
 const char* topicPrefix = "lamp001"; // Declaração da variável para o prefixo do tópico
 // Conexões no ESP32
-const int D4 = 2; // Pino do LED onboard
+const int potPin = 34; // Pino do potenciometro
 const int busyPin = 4; // Pino conectado ao BUSY do DFPlayer
+const int rxPin = 16; // Pino RX2 conectado ao RX do DFPlayer
+const int txPin = 17; // Pino TX2 conectado ao RX do DFPlayer
+const int D4 = 2; // Pino do LED onboard (conexão embutida na placa)
+// Pinos do LED RGB
 const int redPin = 21;
 const int greenPin = 19;
 const int bluePin = 18;
@@ -84,8 +88,7 @@ void initMP3() {
   Serial.println("Compilado!");
 
   // Inicializa a serial do DFPlayer (9600 baud rate é o padrão dele)
-  //               begin(baud rate, 8 bit data, RX Pin, TX Pin)
-  myHardwareSerial.begin(9600, SERIAL_8N1, 16, 17);
+  myHardwareSerial.begin(9600, SERIAL_8N1, rxPin, txPin);
 
   Serial.println("Iniciando comunicação com o DFPlayer...");
 
@@ -253,7 +256,6 @@ void reconnectMQTT() {
 }
 
 void handleLuminosity() {
-    const int potPin = 34;
     int sensorValue = analogRead(potPin);
     int luminosity = map(sensorValue, 0, 4095, 100, 0);
     String mensagem = String(luminosity);
@@ -290,7 +292,7 @@ void falarBrilho(int valor) {
     aguardarAudio();
   }
   else if (valor >= 1 && valor <= 19) {
-    myDFPlayer.playFolder(3, valor + 1); // "001.mp3 = 0"
+    myDFPlayer.playFolder(3, valor + 1); // "/03/001.mp3 = 'zero'"
     aguardarAudio();
   }
   else if (valor >= 20 && valor <= 99) {
@@ -298,7 +300,7 @@ void falarBrilho(int valor) {
     int unidade = valor % 10;
 
     // Fala a dezena:
-    myDFPlayer.playFolder(4, dezena - 1); // "001.mp3 = 20"
+    myDFPlayer.playFolder(4, dezena - 1); // "/04/001.mp3 = 'vinte'"
     aguardarAudio();
 
     // Fala a unidade:
@@ -306,7 +308,7 @@ void falarBrilho(int valor) {
       myDFPlayer.playFolder(1, 7); // Conector "e"
       aguardarAudio();
 
-      myDFPlayer.playFolder(3, unidade + 1); // "001.mp3 = 0"
+      myDFPlayer.playFolder(3, unidade + 1); // "/03/001.mp3 = 'zero'"
       aguardarAudio();
     }
   }
