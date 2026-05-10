@@ -1,0 +1,72 @@
+﻿@model Teste_SmartLamp.Models.FiwareViewModel
+@{
+    ViewData["Title"] = "Smart Lamp";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Painel Smart Lamp - FIWARE</h2>
+
+<div>
+    <label>IP do Servidor</label>
+    <input type="text" id="serverIp" value="@Model.serverIp" />
+</div>
+
+<br />
+
+<!-- IOT AGENT -->
+<fieldset>
+    <legend>IoT Agent MQTT (:4041)</legend>
+    <input type="button" value="Health Check" onclick="chamar('HealthCheckIoTAgent')" />
+    <input type="button" value="Provisionar Grupo" onclick="chamar('ProvisionarGrupo')" />
+    <input type="button" value="Listar Serviços" onclick="chamar('ListarServicos')" />
+    <input type="button" value="Deletar Grupo" onclick="chamar('DeletarGrupo')" />
+    <input type="button" value="Provisionar Lâmpada" onclick="chamar('ProvisionarLampada')" />
+    <input type="button" value="Registrar Comandos" onclick="chamar('RegistrarComandos')" />
+    <input type="button" value="Listar Dispositivos" onclick="chamar('ListarDispositivos')" />
+    <input type="button" value="Ligar Lâmpada" onclick="chamar('LigarLampada')" />
+    <input type="button" value="Desligar Lâmpada" onclick="chamar('DesligarLampada')" />
+    <input type="button" value="Ver Luminosidade" onclick="chamar('ObterLuminosidade')" />
+    <input type="button" value="Ver Estado" onclick="chamar('ObterEstado')" />
+    <input type="button" value="Deletar do IoT Agent" onclick="chamar('DeletarDispositivoIot')" />
+    <input type="button" value="Deletar do Orion" onclick="chamar('DeletarEntidadeOrion')" />
+</fieldset>
+
+<br /><br />
+
+<label for="corRgb">Cor da Lâmpada:</label>
+<select id="corRgb">
+    <option value="255,255,255" selected>Branca</option>
+    <option value="255,0,0" selected>Vermelha</option>
+    <option value="0,255,0" selected>Verde</option>
+    <option value="0,0,255" selected>Azul</option>
+    <option value="255,255,0" selected>Amarela</option>
+    <option value="148,0,211" selected>Violeta</option>
+    <option value="255,165,0" selected>Laranja</option>
+</select>
+<input type="button" value="Alterar Cor (RGB)" onclick="chamarRgb()" />
+
+<br />
+
+<!-- STH COMET -->
+<fieldset>
+    <legend>STH-Comet (:8666)</legend>
+    <input type="button" value="Health Check" onclick="chamar('HealthCheckSth')" />
+    <input type="button" value="Assinar Luminosidade" onclick="chamar('AssinarLuminosidade')" />
+    Últimos registros:
+    <input type="number" id="lastN" value="30" style="width:60px" />
+    <input type="button" value="Obter Histórico" onclick="chamarHistorico()" />
+</fieldset>
+
+<br />
+
+<!-- ORION -->
+<fieldset>
+    <legend>Orion Context Broker (:1026)</legend>
+    <input type="button" value="Health Check" onclick="chamar('HealthCheckOrion')" />
+</fieldset>
+
+<br />
+<h4>Resultado:</h4>
+<pre id="resultado" style="background:#f4f4f4; padding:10px; border:1px solid #ccc; min-height:60px;">
+    Aguardando...
+</pre>
