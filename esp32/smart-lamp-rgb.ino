@@ -2,8 +2,8 @@
 //Resumo: Esse programa possibilita ligar e desligar o led onboard, além de mandar o status para o Broker MQTT possibilitando o Helix saber
 //se o led está ligado ou desligado.
 //Revisões:
-//Rev1: 26-08-2023 Código portado para o ESP32 e para realizar a leitura de luminosidade e publicar o valor em um tópico aprorpiado do broker 
-//Autor Rev1: Lucas Demetrius Augusto 
+//Rev1: 26-08-2023 Código portado para o ESP32 e para realizar a leitura de luminosidade e publicar o valor em um tópico aprorpiado do broker
+//Autor Rev1: Lucas Demetrius Augusto
 //Rev2: 28-08-2023 Ajustes para o funcionamento no FIWARE Descomplicado
 //Autor Rev2: Fábio Henrique Cabrini
 //Rev3: 1-11-2023 Refinamento do código e ajustes para o funcionamento no FIWARE Descomplicado
@@ -17,21 +17,23 @@ DFRobotDFPlayerMini myDFPlayer;
 
 // Configurações - variáveis editáveis
 const int default_audioVolume = 30; // Volume do módulo DFPlayer (range: 0-30)
-const char* default_SSID = "Wokwi-GUEST"; // Nome da rede Wi-Fi
-const char* default_PASSWORD = ""; // Senha da rede Wi-Fi
-const char* default_BROKER_MQTT = ""; // IP do Broker MQTT
+const char* default_SSID = "senha"; // Nome da rede Wi-Fi
+const char* default_PASSWORD = "wagnerwuo"; // Senha da rede Wi-Fi
+const char* default_BROKER_MQTT = "54.221.177.235"; // IP do Broker MQTT
 const int default_BROKER_PORT = 1883; // Porta do Broker MQTT
 const char* default_TOPICO_SUBSCRIBE = "/TEF/lamp001/cmd"; // Tópico MQTT de escuta
 const char* default_TOPICO_PUBLISH_1 = "/TEF/lamp001/attrs"; // Tópico MQTT de envio de informações para Broker
 const char* default_TOPICO_PUBLISH_2 = "/TEF/lamp001/attrs/l"; // Tópico MQTT de envio de informações para Broker
 const char* default_ID_MQTT = "fiware_001"; // ID MQTT
 const char* topicPrefix = "lamp001"; // Declaração da variável para o prefixo do tópico
+
 // Conexões no ESP32
 const int potPin = 34; // Pino do potenciometro
 const int busyPin = 4; // Pino conectado ao BUSY do DFPlayer
 const int rxPin = 16; // Pino RX2 conectado ao RX do DFPlayer
 const int txPin = 17; // Pino TX2 conectado ao RX do DFPlayer
 const int D4 = 2; // Pino do LED onboard (conexão embutida na placa)
+
 // Pinos do LED RGB
 const int redPin = 21;
 const int greenPin = 19;
@@ -112,162 +114,208 @@ void setup() {
   initMP3();
   initWiFi();
   initMQTT();
+
   MQTT.publish(TOPICO_PUBLISH_1, "s|on");
 }
 
 void loop() {
-    VerificaConexoesWiFIEMQTT();
-    EnviaEstadoOutputMQTT();
-    handleLuminosity();
-    MQTT.loop();
+  VerificaConexoesWiFIEMQTT();
+  EnviaEstadoOutputMQTT();
+  handleLuminosity();
+  MQTT.loop();
 }
 
 void reconectWiFi() {
-    if (WiFi.status() == WL_CONNECTED)
-        return;
-    WiFi.begin(SSID, PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(100);
-        Serial.print(".");
-    }
-    Serial.println();
-    Serial.println("Conectado com sucesso na rede ");
-    Serial.print(SSID);
-    Serial.println("IP obtido: ");
-    Serial.println(WiFi.localIP());
+  if (WiFi.status() == WL_CONNECTED)
+    return;
+  
+  WiFi.begin(SSID, PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(100);
+    Serial.print(".");
+  }
+  
+  Serial.println();
+  Serial.println("Conectado com sucesso na rede ");
+  Serial.print(SSID);
+  Serial.println("IP obtido: ");
+  Serial.println(WiFi.localIP());
 
-    // Garantir que o LED inicie desligado
-    digitalWrite(D4, LOW);
+  // Garantir que o LED inicie desligado
+  digitalWrite(D4, LOW);
 }
 
 // Um callback MQTT é uma função assíncrona invocada automaticamente quando
 // um cliente recebe uma mensagem de um broker em um tópico subscrito.
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
-    String msg;
-    for (int i = 0; i < length; i++) {
-        char c = (char)payload[i];
-        msg += c;
-    }
-    Serial.print("- Mensagem recebida: ");
-    Serial.println(msg);
+  String msg;
+  for (int i = 0; i < length; i++) {
+    char c = (char)payload[i];
+    msg += c;
+  }
+  Serial.print("- Mensagem recebida: ");
+  Serial.println(msg);
 
-    // Forma o padrão de tópico para comparação
-    String onTopic = String(topicPrefix) + "@on|";
-    String offTopic = String(topicPrefix) + "@off|";
-    String rgbTopic = String(topicPrefix) + "@rgb|";
+  // Forma o padrão de tópico para comparação
+  String onTopic = String(topicPrefix) + "@on|";
+  String offTopic = String(topicPrefix) + "@off|";
+  String rgbTopic = String(topicPrefix) + "@rgb|";
 
-    // Verifica qual o tópico recebido a partir da comparação
-    if (msg.equals(onTopic)) {
-      digitalWrite(D4, HIGH);
-      EstadoSaida = '1';
-      myDFPlayer.playFolder(1, 1);
-      aguardarAudio();
-    }
+  // Verifica qual o tópico recebido a partir da comparação
+  if (msg.equals(onTopic)) {
+    setRGB(255, 255, 255, 1);
+    digitalWrite(D4, HIGH);
+    EstadoSaida = '1';
+    myDFPlayer.playFolder(1, 1);
+    aguardarAudio();
+  }
 
-    if (msg.equals(offTopic)) {
-      digitalWrite(D4, LOW);
-      EstadoSaida = '0';
-      myDFPlayer.playFolder(1, 2);
-      aguardarAudio();
-    }
+  if (msg.equals(offTopic)) {
+    setRGB(255, 255, 255, 0);
+    digitalWrite(D4, LOW);
+    EstadoSaida = '0';
+    myDFPlayer.playFolder(1, 2);
+    aguardarAudio();
+  }
 
-    if (msg.startsWith(rgbTopic)) {
-        // Extrai apenas a parte dos valores após o "@rgb|"
-        // Exemplo: se msg for "lamp001@rgb|255,100,50", rgbValues será "255,100,50"
-        String rgbValues = msg.substring(rgbTopic.length());
-        
-        // Encontra as posições das vírgulas para separar os valores
-        int firstCommaIndex = rgbValues.indexOf(',');
-        int secondCommaIndex = rgbValues.indexOf(',', firstCommaIndex + 1);
-        
-        // Valida se encontrou as duas vírgulas (formato correto r,g,b)
-        if (firstCommaIndex > 0 && secondCommaIndex > 0) {
-          // Separa e converte as strings para inteiros
-          int r = rgbValues.substring(0, firstCommaIndex).toInt();
-          int g = rgbValues.substring(firstCommaIndex + 1, secondCommaIndex).toInt();
-          int b = rgbValues.substring(secondCommaIndex + 1).toInt();
-          
-          Serial.print("- Comando RGB reconhecido:");
-          Serial.print(" R="); Serial.print(r); 
-          Serial.print(" G="); Serial.print(g);
-          Serial.print(" B="); Serial.println(b);
-          
-          setRGB(r, g, b, 1.0); // Aplica a cor recebida
-          
-          // O FIWARE exige que o dispositivo confirme que o comando foi executado
-          // Publicamos no tópico cmdexe para atualizar o status da entidade
-          String cmdexeTopic = String("/TEF/") + topicPrefix + "/cmdexe";
-          String confirmMsg = String("rgb|") + rgbValues;
-          MQTT.publish(cmdexeTopic.c_str(), confirmMsg.c_str()); 
-        }
+  if (msg.startsWith(rgbTopic)) {
+    // Extrai apenas a parte dos valores após o "@rgb|"
+    // Exemplo: se msg for "lamp001@rgb|255,100,50", rgbValues será "255,100,50"
+    String rgbValues = msg.substring(rgbTopic.length());
+
+    // Encontra as posições das vírgulas para separar os valores
+    int firstCommaIndex = rgbValues.indexOf(',');
+    int secondCommaIndex = rgbValues.indexOf(',', firstCommaIndex + 1);
+    int thirdCommaIndex = rgbValues.indexOf(',', secondCommaIndex + 1);
+
+    // Valida se encontrou as duas vírgulas (formato correto r,g,b)
+    if (firstCommaIndex > 0 && secondCommaIndex > 0) {
+      int r, g, b;
+      float intensity;
+
+      r = rgbValues.substring(0, firstCommaIndex).toInt();
+      g = rgbValues.substring(firstCommaIndex + 1, secondCommaIndex).toInt();
+
+      if (thirdCommaIndex > 0) {
+        // Formato novo: R,G,B,I
+        b = rgbValues.substring(secondCommaIndex + 1, thirdCommaIndex).toInt();
+        intensity = rgbValues.substring(thirdCommaIndex + 1).toFloat();
+      } else {
+        // Formato antigo: R,G,B — intensidade máxima por padrão
+        b = rgbValues.substring(secondCommaIndex + 1).toInt();
+        intensity = 1.0;
       }
+
+      Serial.print("- Comando RGB reconhecido:");
+      Serial.print(" R="); Serial.print(r);
+      Serial.print(" G="); Serial.print(g);
+      Serial.print(" B="); Serial.print(b);
+      Serial.print(" I="); Serial.println(intensity);
+
+      setRGB(r, g, b, intensity);
+
+      // Reproduz o áudio correspondente à cor
+      if (r == 255 && g == 0 && b == 0) {
+        myDFPlayer.playFolder(2, 1);
+        aguardarAudio();
+      } else if (r == 0 && g == 255 && b == 0) {
+        myDFPlayer.playFolder(2, 2);
+        aguardarAudio();
+      } else if (r == 0 && g == 0 && b == 255) {
+        myDFPlayer.playFolder(2, 3);
+        aguardarAudio();
+      } else if (r == 255 && g == 255 && b == 255) {
+        myDFPlayer.playFolder(2, 4);
+        aguardarAudio();
+      } else if (r == 255 && g == 255 && b == 0) {
+        myDFPlayer.playFolder(2, 5);
+        aguardarAudio();
+      } else if (r == 148 && g == 0 && b == 211) {
+        myDFPlayer.playFolder(2, 6);
+        aguardarAudio();
+      } else if (r == 255 && g == 165 && b == 0) {
+        myDFPlayer.playFolder(2, 7);
+        aguardarAudio();
+      }
+
+      // Converte a intensidade (0.0 a 1.0) para porcentagem (0 a 100) e fala o brilho
+      int porcentagemBrilho = (int)(intensity * 100);
+      falarBrilho(porcentagemBrilho);
+
+      // O FIWARE exige que o dispositivo confirme que o comando foi executado
+      // Publicamos no tópico cmdexe para atualizar o status da entidade
+      String cmdexeTopic = String("/TEF/") + topicPrefix + "/cmdexe";
+      String confirmMsg  = String("rgb|") + rgbValues;
+      MQTT.publish(cmdexeTopic.c_str(), confirmMsg.c_str());
+    }  
+  }
 }
 
 void VerificaConexoesWiFIEMQTT() {
-    if (!MQTT.connected())
-        reconnectMQTT();
-    reconectWiFi();
+  if (!MQTT.connected())
+    reconnectMQTT();
+  reconectWiFi();
 }
 
 void EnviaEstadoOutputMQTT() {
-    if (EstadoSaida == '1') {
-        MQTT.publish(TOPICO_PUBLISH_1, "s|on");
-        Serial.println("- Led Ligado");
-    }
+  if (EstadoSaida == '1') {
+    MQTT.publish(TOPICO_PUBLISH_1, "s|on");
+    Serial.println("- Led Ligado");
+  }
 
-    if (EstadoSaida == '0') {
-        MQTT.publish(TOPICO_PUBLISH_1, "s|off");
-        Serial.println("- Led Desligado");
-    }
-    Serial.println("- Estado do LED onboard enviado ao broker!");
-    delay(1000);
+  if (EstadoSaida == '0') {
+    MQTT.publish(TOPICO_PUBLISH_1, "s|off");
+    Serial.println("- Led Desligado");
+  }
+  Serial.println("- Estado do LED onboard enviado ao broker!");
+  delay(1000);
 }
 
 void InitOutput() {
-    // Configura os canais PWM
-    ledcAttach(redPin, frequency, resolution);
-    ledcAttach(greenPin, frequency, resolution);
-    ledcAttach(bluePin, frequency, resolution);
+  // Configura os canais PWM
+  ledcAttach(redPin, frequency, resolution);
+  ledcAttach(greenPin, frequency, resolution);
+  ledcAttach(bluePin, frequency, resolution);
 
-    // Configura e oscila LED embutido
-    pinMode(D4, OUTPUT);
-    digitalWrite(D4, HIGH);
+  // Configura e oscila LED embutido
+  pinMode(D4, OUTPUT);
+  digitalWrite(D4, HIGH);
+  boolean toggle = false;
 
-    boolean toggle = false;
-
-    for (int i = 0; i <= 10; i++) {
-        toggle = !toggle;
-        digitalWrite(D4, toggle);
-        delay(200);
-    }
+  for (int i = 0; i <= 10; i++) {
+    toggle = !toggle;
+    digitalWrite(D4, toggle);
+    delay(200);
+  }
 }
 
 void reconnectMQTT() {
-    while (!MQTT.connected()) {
-        Serial.print("* Tentando se conectar ao Broker MQTT: ");
-        Serial.println(BROKER_MQTT);
-        if (MQTT.connect(ID_MQTT)) {
-          Serial.println("Conectado com sucesso ao broker MQTT!");
-          myDFPlayer.playFolder(1, 3);
-          aguardarAudio();
-          MQTT.subscribe(TOPICO_SUBSCRIBE);
-        } else {
-            Serial.println("Falha ao reconectar no broker.");
-            Serial.println("Haverá nova tentativa de conexão em 2s");
-            myDFPlayer.playFolder(1, 4);
-            aguardarAudio();
-            delay(2000);
-        }
+  while (!MQTT.connected()) {
+    Serial.print("* Tentando se conectar ao Broker MQTT: ");
+    Serial.println(BROKER_MQTT);
+    if (MQTT.connect(ID_MQTT)) {
+      Serial.println("Conectado com sucesso ao broker MQTT!");
+      myDFPlayer.playFolder(1, 3); // "Conectado ao sistema FIWARE"
+      aguardarAudio();
+      MQTT.subscribe(TOPICO_SUBSCRIBE);
+    } else {
+      Serial.println("Falha ao reconectar no broker.");
+      Serial.println("Haverá nova tentativa de conexão em 2s");
+      myDFPlayer.playFolder(1, 4);
+      aguardarAudio();
+      delay(2000);
     }
+  }
 }
 
 void handleLuminosity() {
-    int sensorValue = analogRead(potPin);
-    int luminosity = map(sensorValue, 0, 4095, 100, 0);
-    String mensagem = String(luminosity);
-    Serial.print("Valor da luminosidade: ");
-    Serial.println(mensagem.c_str());
-    MQTT.publish(TOPICO_PUBLISH_2, mensagem.c_str());
+  int sensorValue = analogRead(potPin);
+  
+  int luminosity = map(sensorValue, 0, 4095, 100, 0);
+  String mensagem = String(luminosity);
+  Serial.print("Valor da luminosidade: ");
+  Serial.println(mensagem.c_str());
+  MQTT.publish(TOPICO_PUBLISH_2, mensagem.c_str());
 }
 
 void aguardarAudio() {
@@ -288,7 +336,6 @@ void falarBrilho(int valor) {
   aguardarAudio();
 
   // 2. Lógica dos Números
-
   if (valor == 0) {
     myDFPlayer.playFolder(3, 1);
     aguardarAudio();
