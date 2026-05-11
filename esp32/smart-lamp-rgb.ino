@@ -112,9 +112,6 @@ void setup() {
   initMP3();
   initWiFi();
   initMQTT();
-  myDFPlayer.playFolder(1, 3); // "Conectado ao sistema FIWARE"
-  aguardarAudio();
-
   MQTT.publish(TOPICO_PUBLISH_1, "s|on");
 }
 
@@ -161,13 +158,17 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
     // Verifica qual o tópico recebido a partir da comparação
     if (msg.equals(onTopic)) {
-        digitalWrite(D4, HIGH);
-        EstadoSaida = '1';
+      digitalWrite(D4, HIGH);
+      EstadoSaida = '1';
+      myDFPlayer.playFolder(1, 1);
+      aguardarAudio();
     }
 
     if (msg.equals(offTopic)) {
-        digitalWrite(D4, LOW);
-        EstadoSaida = '0';
+      digitalWrite(D4, LOW);
+      EstadoSaida = '0';
+      myDFPlayer.playFolder(1, 2);
+      aguardarAudio();
     }
 
     if (msg.startsWith(rgbTopic)) {
@@ -181,24 +182,24 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
         
         // Valida se encontrou as duas vírgulas (formato correto r,g,b)
         if (firstCommaIndex > 0 && secondCommaIndex > 0) {
-            // Separa e converte as strings para inteiros
-            int r = rgbValues.substring(0, firstCommaIndex).toInt();
-            int g = rgbValues.substring(firstCommaIndex + 1, secondCommaIndex).toInt();
-            int b = rgbValues.substring(secondCommaIndex + 1).toInt();
-            
-            Serial.print("- Comando RGB reconhecido:");
-            Serial.print(" R="); Serial.print(r); 
-            Serial.print(" G="); Serial.print(g);
-            Serial.print(" B="); Serial.println(b);
-            
-            setRGB(r, g, b, 1.0); // Aplica a cor recebida
-            
-            // O FIWARE exige que o dispositivo confirme que o comando foi executado
-            // Publicamos no tópico cmdexe para atualizar o status da entidade
-            String cmdexeTopic = String("/TEF/") + topicPrefix + "/cmdexe";
-            String confirmMsg = String("rgb|") + rgbValues;
-            MQTT.publish(cmdexeTopic.c_str(), confirmMsg.c_str()); 
-          }
+          // Separa e converte as strings para inteiros
+          int r = rgbValues.substring(0, firstCommaIndex).toInt();
+          int g = rgbValues.substring(firstCommaIndex + 1, secondCommaIndex).toInt();
+          int b = rgbValues.substring(secondCommaIndex + 1).toInt();
+          
+          Serial.print("- Comando RGB reconhecido:");
+          Serial.print(" R="); Serial.print(r); 
+          Serial.print(" G="); Serial.print(g);
+          Serial.print(" B="); Serial.println(b);
+          
+          setRGB(r, g, b, 1.0); // Aplica a cor recebida
+          
+          // O FIWARE exige que o dispositivo confirme que o comando foi executado
+          // Publicamos no tópico cmdexe para atualizar o status da entidade
+          String cmdexeTopic = String("/TEF/") + topicPrefix + "/cmdexe";
+          String confirmMsg = String("rgb|") + rgbValues;
+          MQTT.publish(cmdexeTopic.c_str(), confirmMsg.c_str()); 
+        }
       }
 }
 
@@ -231,6 +232,7 @@ void InitOutput() {
     // Configura e oscila LED embutido
     pinMode(D4, OUTPUT);
     digitalWrite(D4, HIGH);
+
     boolean toggle = false;
 
     for (int i = 0; i <= 10; i++) {
@@ -245,11 +247,15 @@ void reconnectMQTT() {
         Serial.print("* Tentando se conectar ao Broker MQTT: ");
         Serial.println(BROKER_MQTT);
         if (MQTT.connect(ID_MQTT)) {
-            Serial.println("Conectado com sucesso ao broker MQTT!");
-            MQTT.subscribe(TOPICO_SUBSCRIBE);
+          Serial.println("Conectado com sucesso ao broker MQTT!");
+          myDFPlayer.playFolder(1, 3);
+          aguardarAudio();
+          MQTT.subscribe(TOPICO_SUBSCRIBE);
         } else {
             Serial.println("Falha ao reconectar no broker.");
             Serial.println("Haverá nova tentativa de conexão em 2s");
+            myDFPlayer.playFolder(1, 4);
+            aguardarAudio();
             delay(2000);
         }
     }
