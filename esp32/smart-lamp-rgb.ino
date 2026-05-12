@@ -19,7 +19,7 @@ DFRobotDFPlayerMini myDFPlayer;
 const int default_audioVolume = 30; // Volume do módulo DFPlayer (range: 0-30)
 const char* default_SSID = "senha"; // Nome da rede Wi-Fi
 const char* default_PASSWORD = "wagnerwuo"; // Senha da rede Wi-Fi
-const char* default_BROKER_MQTT = "54.221.177.235"; // IP do Broker MQTT
+const char* default_BROKER_MQTT = "18.208.212.113"; // IP do Broker MQTT
 const int default_BROKER_PORT = 1883; // Porta do Broker MQTT
 const char* default_TOPICO_SUBSCRIBE = "/TEF/lamp001/cmd"; // Tópico MQTT de escuta
 const char* default_TOPICO_PUBLISH_1 = "/TEF/lamp001/attrs"; // Tópico MQTT de envio de informações para Broker
@@ -227,13 +227,13 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       } else if (r == 255 && g == 255 && b == 255) {
         myDFPlayer.playFolder(2, 4);
         aguardarAudio();
-      } else if (r == 255 && g == 255 && b == 0) {
+      } else if (r == 255 && g == 191 && b == 0) {
         myDFPlayer.playFolder(2, 5);
         aguardarAudio();
       } else if (r == 148 && g == 0 && b == 211) {
         myDFPlayer.playFolder(2, 6);
         aguardarAudio();
-      } else if (r == 255 && g == 165 && b == 0) {
+      } else if (r == 255 && g == 92 && b == 0) {
         myDFPlayer.playFolder(2, 7);
         aguardarAudio();
       }
