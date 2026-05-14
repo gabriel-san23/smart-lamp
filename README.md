@@ -37,7 +37,11 @@ In addition to controlling the RGB lamp, the system also monitors ambient light 
 ✅ Real-time luminosity chart  
 ✅ Service health check  
 ✅ Device provisioning and registration  
-✅ Real-time MQTT communication  
+✅ Real-time MQTT communication
+✅ Audio feedback system  
+✅ Voice notifications for state changes  
+✅ Accessibility support for visually impaired users  
+✅ Real-time luminosity alerts 
 
 ---
 
@@ -68,10 +72,17 @@ In addition to controlling the RGB lamp, the system also monitors ambient light 
 
 - ESP32
 - RGB LED
+- DFPlayer Mini + Micro SD Card
+- Mini Speaker
 - LDR Sensor
 - Breadboard
-- Resistors
 - Jumper Wires
+
+### Resistors
+
+- 3x 330Ω resistors for RGB LED protection
+- 1x 1kΩ resistor between ESP32 TX and DFPlayer RX to reduce noise and protect the signal
+- 1x 10kΩ resistor for the LDR voltage divider circuit
 
 ---
 
@@ -91,8 +102,9 @@ FIWARE / Orion Context Broker
 MQTT
    ↓
 ESP32
-   ↓
-RGB LED + LDR Sensor
+   ├── RGB LED
+   ├── LDR Sensor
+   └── DFPlayer Mini + Speaker
 ```
 
 ---
@@ -121,13 +133,28 @@ SmartLamp/
 
 The ESP32 was integrated with the FIWARE ecosystem using the MQTT protocol, enabling efficient real-time communication between the physical device and the web application.
 
+The AWS EC2 instance hosts the Orion Context Broker and the IoT Agent, which are responsible for managing device state and translating MQTT communication between the ESP32 and FIWARE services.
+
 Through this integration, the system is capable of:
 
 - receiving remote commands;
 - updating device states;
 - sending sensor data;
 - storing temporal measurements;
-- performing continuous monitoring.
+- performing continuous monitoring;
+- generating real-time accessibility feedback.
+
+# ☁️ Infrastructure
+
+The project uses an AWS EC2 virtual machine running Ubuntu Server to host the FIWARE ecosystem.
+
+The infrastructure includes:
+
+- Orion Context Broker
+- IoT Agent MQTT
+- MQTT communication services
+
+The ESP32 communicates with FIWARE using the MQTT protocol through an internet connection shared by a mobile hotspot.
 
 ---
 
@@ -137,12 +164,30 @@ The system reads ambient luminosity using an LDR sensor connected to the ESP32.
 
 The collected data is sent to FIWARE and later displayed on the web interface through dynamic charts developed with Chart.js.
 
+When low luminosity levels are detected, the system can generate accessibility-oriented audio alerts to notify the user in real time.
+
 ## Displayed Information
 
 - Current luminosity level
 - Historical luminosity records
 - Luminosity × time chart
 - Current lamp status
+
+---
+
+# ♿ Accessibility Features
+
+One of the main goals of the project is to provide accessibility support for visually impaired users.
+
+Every interaction performed through the web interface generates immediate audio feedback using the DFPlayer Mini module and a speaker connected to the ESP32.
+
+Examples:
+
+- "Color changed to green"
+- "Brightness set to 42 percent"
+- "Low luminosity detected"
+
+This feature allows users to fully interact with the device without relying on visual feedback from the interface.
 
 ---
 
