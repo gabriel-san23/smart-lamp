@@ -252,10 +252,6 @@ esp32/smart-lamp-rgb.ino
 
 ---
 
-## 📮 API Tests
-
----
-
 # 👨‍💻 Team Members
 
 - Daniel Cataneo
