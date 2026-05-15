@@ -248,7 +248,7 @@ esp32/smart-lamp-rgb.ino
 
 ---
 
-## 📈 Monitoring Dashboard
+## 📈 Luminosity Chart
 
 ---
 
