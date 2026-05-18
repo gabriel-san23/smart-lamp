@@ -242,11 +242,15 @@ esp32/smart-lamp-rgb.ino
 
 ## 🔧 Physical Prototype
 
----
+<p align="center">
+  <img src="docs/images/prototype.jpg" width="600">
+</p>
 
 ## 🌐 Web Interface
 
----
+<p align="center">
+  <img src="docs/images/web-interface.jpg" width="600">
+</p>
 
 ## 📈 Luminosity Chart
 
